@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REST API Working Demo</title>
+<style>
+  :root { font-family: Inter, Arial, sans-serif; color: #182230; background: #f4f7fb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; }
+  main { max-width: 1000px; margin: auto; }
+  h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+  .sub { color: #5b6575; margin: 0 0 22px; line-height: 1.5; }
+  .panel { background: white; border: 1px solid #dfe6ef; border-radius: 16px; padding: 20px; margin: 16px 0; box-shadow: 0 5px 18px #162b4d0a; }
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: center; }
+  .node { padding: 18px 12px; border-radius: 12px; text-align: center; min-height: 100px; display: flex; flex-direction: column; justify-content: center; gap: 7px; border: 1px solid #d7e3f4; background: #eaf2ff; }
+  .node.server { background: #e7f8ee; border-color: #c4ebd1; }
+  .node.data { background: #fff2df; border-color: #f4dfbd; }
+  .node small { color: #596579; line-height: 1.35; }
+  .arrow { font-size: 1.5rem; color: #64748b; }
+  .controls { display: flex; flex-wrap: wrap; gap: 9px; margin: 14px 0; }
+  button, select { font: inherit; border-radius: 9px; border: 1px solid #cbd5e1; padding: 10px 13px; background: white; cursor: pointer; }
+  button.primary { background: #245bd6; border-color: #245bd6; color: white; }
+  button:hover { filter: brightness(.97); }
+  button:focus-visible, select:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+  .requestline { background: #101827; color: #d8e7ff; border-radius: 10px; padding: 14px; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .result { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; min-height: 92px; }
+  .label { font-size: .85rem; text-transform: uppercase; letter-spacing: .07em; color: #667085; font-weight: 700; margin-bottom: 8px; }
+  .explain { line-height: 1.65; color: #384456; }
+  .tag { display: inline-block; border-radius: 99px; padding: 4px 9px; background: #edf2ff; color: #234ca5; font-size: .82rem; font-weight: 700; }
+  .status { font-weight: 700; color: #167447; }
+  footer { color: #667085; font-size: .9rem; line-height: 1.5; margin: 18px 2px; }
+  @media (max-width: 650px) {
+    body { padding: 14px; }
+    .flow { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); text-align: center; }
+    .node { min-height: 78px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>REST API — Interactive Working Demo</h1>
+  <p class="sub">A simple user-management example showing how a client sends an HTTP request and receives a response from a server. This is a front-end simulation; it does not connect to a real backend.</p>
+
+  <section class="panel">
+    <div class="label">System flow</div>
+    <div class="flow" aria-label="Browser sends request to REST API server, which reads or changes data and returns a response">
+      <div class="node"><strong>1. Client / Browser</strong><small>Select an operation and send a request</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="node server"><strong>2. REST API Server</strong><small>Receives HTTP method and resource path</small></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="node data"><strong>3. User Data</strong><small>Server reads or updates user records</small></div>
+    </div>
+    <p class="explain">The server then sends an HTTP response back to the client, usually with a status code and data such as JSON.</p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Try the REST API requests</div>
+    <label for="operation"><strong>Choose an operation</strong></label>
+    <div class="controls">
+      <select id="operation" aria-label="Choose CRUD operation">
+        <option value="GET">GET — Read a user</option>
+        <option value="POST">POST — Create a user</option>
+        <option value="PUT">PUT — Update a user</option>
+        <option value="DELETE">DELETE — Delete a user</option>
+      </select>
+      <button class="primary" id="send">Send request</button>
+      <button id="reset">Reset demo</button>
+    </div>
+    <div class="label">HTTP request</div>
+    <div class="requestline" id="request">GET https://college.example/api/users/101</div>
+    <div style="height:14px"></div>
+    <div class="label">Server response</div>
+    <div class="result" id="response" aria-live="polite">Click “Send request” to see a sample response.</div>
+    <p id="status" class="status" aria-live="polite"></p>
+  </section>
+
+  <section class="panel">
+    <div class="label">Why it is REST</div>
+    <p class="explain"><span class="tag">Resource</span> <code>/api/users/101</code> identifies a user resource.</p>
+    <p class="explain"><span class="tag">HTTP method</span> GET, POST, PUT, and DELETE describe the action.</p>
+    <p class="explain"><span class="tag">Representation</span> The server can send the user’s current data as JSON.</p>
+    <p class="explain"><span class="tag">Transfer</span> The representation travels between client and server in the HTTP response.</p>
+  </section>
+  <footer>For a real REST API, a backend server must implement these routes. This demo only illustrates the request/response flow for a lab explanation.</footer>
+</main>
+<script>
+  const op = document.getElementById('operation');
+  const request = document.getElementById('request');
+  const response = document.getElementById('response');
+  const status = document.getElementById('status');
+  const examples = {
+    GET: {
+      request: 'GET https://college.example/api/users/101',
+      response: '{\\n  "id": 101,\\n  "name": "Arun",\\n  "department": "AI & DS"\\n}',
+      status: '200 OK — User details retrieved successfully.'
+    },
+    POST: {
+      request: 'POST https://college.example/api/users\\nContent-Type: application/json\\n\\n{ "name": "Arun", "department": "AI & DS" }',
+      response: '{\\n  "message": "User created successfully",\\n  "id": 102,\\n  "name": "Arun",\\n  "department": "AI & DS"\\n}',
+      status: '201 Created — New user added.'
+    },
+    PUT: {
+      request: 'PUT https://college.example/api/users/101\\nContent-Type: application/json\\n\\n{ "name": "Arun Kumar", "department": "AI & DS" }',
+      response: '{\\n  "message": "User updated successfully",\\n  "id": 101,\\n  "name": "Arun Kumar",\\n  "department": "AI & DS"\\n}',
+      status: '200 OK — User details updated.'
+    },
+    DELETE: {
+      request: 'DELETE https://college.example/api/users/101',
+      response: '{\\n  "message": "User deleted successfully",\\n  "id": 101\\n}',
+      status: '200 OK — User removed.'
+    }
+  };
+  function showExample() {
+    const example = examples[op.value];
+    request.textContent = example.request;
+    response.textContent = 'Click “Send request” to see a sample response.';
+    status.textContent = '';
+  }
+  op.addEventListener('change', showExample);
+  document.getElementById('send').addEventListener('click', () => {
+    const example = examples[op.value];
+    request.textContent = example.request;
+    response.textContent = example.response;
+    status.textContent = example.status + ' (Simulated response)';
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    op.value = 'GET';
+    showExample();
+  });
+  showExample();
+</script>
+</body>
+</html>
